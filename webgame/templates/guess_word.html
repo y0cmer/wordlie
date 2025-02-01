@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guess the Word</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Guess the Word</h1>
+        <p id="status">Connecting...</p>
+
+        <div id="nickname-form">
+            <input type="text" id="nickname-input" placeholder="Enter your nickname" required />
+            <button id="join-room" class="btn">Join Room</button>
+        </div>
+
+        <form id="guess-form" style="display:none;">
+            <input type="text" id="guess-input" maxlength="1" required />
+            <button type="submit" class="btn">Guess</button>
+        </form>
+
+        <ul id="messages"></ul>
+
+        <div id="timer">
+            <p>Time left: <span id="time-left">120</span> seconds</p>
+        </div>
+
+        <div id="endgame-buttons" style="display:none;">
+            <button id="go-to-lobbies" class="btn">Go to Available Lobbies</button>
+            <button id="create-room" class="btn">Create New Room</button>
+        </div>
+    </div>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomId = urlParams.get("room_id");
+
+        const statusElement = document.getElementById("status");
+        const nicknameForm = document.getElementById("nickname-form");
+        const nicknameInput = document.getElementById("nickname-input");
+        const joinRoomButton = document.getElementById("join-room");
+        const guessForm = document.getElementById("guess-form");
+        const messages = document.getElementById("messages");
+        const endgameButtons = document.getElementById("endgame-buttons");
+        const goToLobbiesButton = document.getElementById("go-to-lobbies");
+        const createRoomButton = document.getElementById("create-room");
+        const timeLeftElement = document.getElementById("time-left");
+
+        let ws;
+        let timer;
+
+        joinRoomButton.onclick = (event) => {
+            event.preventDefault(); // Запобігаємо перезавантаженню сторінки 
+            const nickname = nicknameInput.value;
+            if (!nickname) {
+                alert("Please enter a nickname.");
+                return;
+            }
+
+            ws = new WebSocket(`ws://127.0.0.1:8000/ws/${roomId}`);
+
+            ws.onopen = () => {
+                console.log("WebSocket connection established.");
+                statusElement.textContent = `Connected to room: ${roomId}`;
+                ws.send(nickname); // Надсилаємо нік на сервер
+                nicknameForm.style.display = "none";
+                guessForm.style.display = "block";
+                startTimer(120); // Запускаємо таймер для гри 2 хв
+            };
+
+            ws.onmessage = (event) => {
+                const message = document.createElement("li");
+                message.textContent = event.data;
+                messages.appendChild(message);
+
+                if (event.data.startsWith("Game Over") || event.data.startsWith("Time's up")) {
+                    guessForm.style.display = "none";
+                    endgameButtons.style.display = "block";
+                    clearInterval(timer); // Зупиняємо таймер
+                    setTimeout(() => {
+                        window.location.href = "/"; // Перенаправлення на сторінку старту
+                    }, 5000); // Перекидаємо через 5 секунд на головну сторінку );
+                }
+            };
+
+            ws.onerror = (error) => {
+                console.error("WebSocket error:", error);
+                statusElement.textContent = "Failed to connect to the room.";
+            };
+
+            ws.onclose = () => {
+                console.log("WebSocket connection closed.");
+                statusElement.textContent = "Connection closed.";
+            };
+        };
+
+        guessForm.onsubmit = (event) => {
+            event.preventDefault();
+            const guessInput = document.getElementById("guess-input");
+            const guess = guessInput.value;
+            ws.send(`guess:${guess}`);
+            guessInput.value = "";
+        };
+
+        function startTimer(seconds) {
+            clearInterval(timer); // Зупиняємо попередній таймер :)
+            let timeLeft = seconds;
+            timeLeftElement.textContent = timeLeft;
+
+            timer = setInterval(() => {
+                timeLeft--;
+                timeLeftElement.textContent = timeLeft;
+
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    timeLeftElement.textContent = "0";
+                }
+            }, 1000);
+        }
+
+        goToLobbiesButton.onclick = () => {
+            window.location.href = "/lobbies_page";
+        };
+
+        createRoomButton.onclick = () => {
+            window.location.href = "/create_room";
+        };
+    </script>
+</body>
+</html>

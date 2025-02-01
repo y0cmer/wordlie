@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Room</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Create a Room</h1>
+        <form id="create-room-form">
+            <label for="room-id">Room ID:</label>
+            <input type="text" id="room-id" required />
+            <label for="room-word">Word:</label>
+            <input type="text" id="room-word" required />
+            <label for="room-category">Category:</label>
+            <input type="text" id="room-category" required />
+            <button type="submit" class="btn">Create Room</button>
+        </form>
+        <p id="create-room-status"></p>
+        <div>
+            <button id="go-to-lobbies" class="btn" style="display: none;">Go to Available Lobbies</button>
+        </div>
+    </div>
+    <script>
+        const createRoomForm = document.getElementById("create-room-form");
+        const createRoomStatus = document.getElementById("create-room-status");
+        const goToLobbiesButton = document.getElementById("go-to-lobbies");
+
+        createRoomForm.onsubmit = async (event) => {
+            event.preventDefault();
+            const roomId = document.getElementById("room-id").value;
+            const roomWord = document.getElementById("room-word").value;
+            const roomCategory = document.getElementById("room-category").value;
+
+            try {
+                const response = await fetch(`/create_room/${roomId}/${roomWord}/${roomCategory}`, {
+                    method: "POST",
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    createRoomStatus.textContent = result.message;
+                    createRoomStatus.style.color = "green";
+                    goToLobbiesButton.style.display = "inline-block";
+                } else {
+                    const error = await response.json();
+                    createRoomStatus.textContent = `Error: ${error.detail}`;
+                    createRoomStatus.style.color = "red";
+                }
+            } catch (error) {
+                createRoomStatus.textContent = "Error creating room. Please try again.";
+                createRoomStatus.style.color = "red";
+            }
+        };
+
+        goToLobbiesButton.onclick = () => {
+            window.location.href = "/lobbies_page";
+        };
+    </script>
+</body>
+</html>

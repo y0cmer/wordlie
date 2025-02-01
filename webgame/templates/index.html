@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Guess the Word</title>
+</head>
+<body>
+    <h1>Guess the Word</h1>
+
+    <!-- Create Room Form -->
+    <div>
+        <h2>Create a Room</h2>
+        <form id="create-room-form">
+            <label for="room-id">Room ID:</label>
+            <input type="text" id="room-id" required />
+            <label for="room-word">Word:</label>
+            <input type="text" id="room-word" required />
+            <button type="submit">Create Room</button>
+        </form>
+        <p id="create-room-status"></p>
+    </div>
+
+    <!-- Join Room and Play -->
+    <div>
+        <h2>Join a Room</h2>
+        <p id="game-status"></p>
+        <form id="guess-form" style="display:none;">
+            <input type="text" id="guess" maxlength="1" required />
+            <button type="submit">Guess</button>
+        </form>
+        <ul id="messages"></ul>
+    </div>
+
+    <div>
+        <h2>Avaible lobbies</h2>
+        <ul id = "lobby list"></ul>
+    </div>
+
+    <script>
+        // Handle room creation
+        const createRoomForm = document.getElementById("create-room-form");
+        const createRoomStatus = document.getElementById("create-room-status");
+        const lobbyList = document.getElementById("lobby-list");
+        const guessForm = document.getElementById("guess-form");
+        const messages = document.getElementById("messages");
+        const gameStatus = document.getElementById("game-status");
+
+        async function fetchLobbies(){
+                try{
+                    const response = await fetch("/lobbies");
+                    if (response.ok) {
+                        const data = await response.json();
+                        const lobbies = data.lobbies;
+                        lobbyList.innerHTML = "";
+                        if (lobbies.length === 0){
+                            const emptyMessage = document.createElement("li");
+                            emptyMessage.textContent = "No lobbies avaible";
+                            lobbyList.appendChild(emptyMessage);
+                        } else {
+                            lobbies.forEach((lobby) => {
+                                const listItem = document.createElement("li");
+                                listItem.textContent = `Room ID: ${lobby}`;
+                                const joinButton = document.createElement("button");
+                                joinButton.textContent = "Join";
+                                joinButton.onclick = () => joinLobby (lobby);
+                                listItem.appendChild(joinButton);
+                                lobbyList.appendChild(listItem);
+                            });
+                        }
+                    }
+                } catch(error) {
+                    console.error("Error fetching lobbies:", error);
+                }
+            }
+
+fetchLobbies()
+
+        createRoomForm.onsubmit = async (event) => {
+            event.preventDefault();
+            const roomId = document.getElementById("room-id").value;
+            const roomWord = document.getElementById("room-word").value;
+
+            try {
+                const response = await fetch(`/create_room/${roomId}/${roomWord}`, {
+                    method: "POST",
+                });
+
+                if (response.ok) {
+                    createRoomStatus.textContent = `Room '${roomId}' created successfully!`;
+                    createRoomStatus.style.color = "green";
+                } else {
+                    const error = await response.json();
+                    createRoomStatus.textContent = `Error: ${error.detail}`;
+                    createRoomStatus.style.color = "red";
+                }
+            } catch (error) {
+                createRoomStatus.textContent = "Error creating room. Please try again.";
+                createRoomStatus.style.color = "red";
+            }
+        };
+
+        // Prompt user to join a room
+        const roomId = prompt("Enter room ID to join:");
+        if (roomId) {
+            const ws = new WebSocket(`ws://127.0.0.1:8000/ws/${roomId}`);
+
+            ws.onopen = () => {
+                gameStatus.textContent = "Connected to the game!";
+                guessForm.style.display = "block";
+            };
+
+            ws.onerror = () => {
+                alert("Error connecting to the server or room does not exist.");
+            };
+
+            ws.onmessage = (event) => {
+                const message = document.createElement("li");
+                message.textContent = event.data;
+                messages.appendChild(message);
+
+                if (event.data.startsWith("Game Over")) {
+                    guessForm.style.display = "none";
+                }
+            };
+
+            guessForm.onsubmit = (event) => {
+                event.preventDefault();
+                const guessInput = document.getElementById("guess");
+                const guess = guessInput.value;
+                ws.send(`guess:${guess}`);
+                guessInput.value = "";
+            };
+        }
+    </script>
+</body>
+</html>

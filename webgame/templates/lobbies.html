@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Available Lobbies</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Available Lobbies</h1>
+        <ul id="lobby-list"></ul>
+    </div>
+
+    <script>
+        const lobbyList = document.getElementById("lobby-list");
+
+        async function fetchLobbies() {
+            try {
+                const response = await fetch("/lobbies");
+                if (response.ok) {
+                    const data = await response.json();
+                    const lobbies = data.lobbies;
+
+                    lobbyList.innerHTML = "";
+
+                    if (lobbies.length === 0) {
+                        const emptyMessage = document.createElement("li");
+                        emptyMessage.textContent = "No lobbies available.";
+                        lobbyList.appendChild(emptyMessage);
+                    } else {
+                        lobbies.forEach((lobby) => {
+                            const listItem = document.createElement("li");
+                            listItem.textContent = `Room ID: ${lobby}`;
+                            const joinButton = document.createElement("button");
+                            joinButton.textContent = "Join";
+                            joinButton.onclick = () => joinLobby(lobby);
+                            listItem.appendChild(joinButton);
+                            lobbyList.appendChild(listItem);
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error("Error fetching lobbies:", error);
+            }
+        }
+
+        function joinLobby(roomId) {
+            window.location.href = `/guess_word?room_id=${roomId}`;
+        }
+
+        fetchLobbies();
+    </script>
+</body>
+</html>
